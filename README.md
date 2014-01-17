@@ -5,6 +5,17 @@ Crane is a management tool for Docker containers written in Go. It's main goal i
 All of it can be packed into a single executable file that can be easily distributed!
 
 
+#Why Crane?
+
+ Are you tired of setting up a cluster of containers every time you start your machine?
+ 
+ Would you like to be able to recreate your containers on a different machine with a single command?
+ 
+ Would you like to be able to run a set of commands across many containers with a single command?
+
+If you answered "yes" to at least one of above questions then Crane is something you might want to give a spin!
+
+
 #Features
 
 </br>
@@ -23,7 +34,7 @@ All of it can be packed into a single executable file that can be easily distrib
 
 Crane manages Docker containers so you have to install Docker first. Detailed Docker installation instructions can be found [here](http://docs.docker.io/en/latest/installation).
 
-You need [Go]() set up as well.
+You need [Go](http://golang.org/) set up as well.
 
 # How to use Crane
 
@@ -53,6 +64,171 @@ You can configure Docker containers using a single file called Cranefile.toml. C
 
 In case you missed it I say it again: you need only a SINGLE executable file and that's it! Simplesss...
 
+#Example usage
+
+Example Cranefile.toml
+
+```
+[containers]
+[containers.firstContainer]
+IMAGE = "orobix/sshfs_startup_key2"
+DOCKERFILE = "."
+GRAPHICAL = true
+DAEMONIZED = true
+CWD = "/home/foo" #Leave empty if not needed
+DNS = ""#172.25.0.10" #Leave empty if not needed
+PASSWORD = "orobix2013"#Leave empty if not needed
+USERNAME = "root"
+PORTS = [[49153, 22],[49653, 80]]
+
+MOUNTPOINTS = [["/home/piotr/node-simple", "/mnt/node-simple","rw"],["/home/piotr/colors","/mnt/colors","ro"]]
+
+COMMANDS = [["first","echo firstContainerfirstScript"],["second","echo firstContainerSecondScript"]]
+
+[containers.secondContainer]
+IMAGE = "orobix/sshfs_startup_key2"
+DOCKERFILE = "."
+GRAPHICAL = true
+DAEMONIZED = false
+CWD = "" #"/home/foo" #Leave empty if not needed
+DNS = "" #172.25.0.10" #Leave empty if not needed
+PASSWORD = "orobix2013"#Leave empty if not needed
+USERNAME = "root"
+PORTS = [[49154, 22],[49654, 80]]
+
+MOUNTPOINTS = [["/home/piotr/node-simple", "/mnt/node-simple","rw"],["/home/piotr/colors","/mnt/colors","ro"]]
+COMMANDS = [["first","echo secondContainerfirstScript"],["second","echo secondContainerSecondScript"]]
+
+
+
+```
+Example dialog involving daemonized containers:
+
+```
+$sudo docker ps
+CONTAINER ID        IMAGE               COMMAND             CREATED             STATUS              PORTS               NAMES
+$crane version
+Crane v0.0.1.dev
+$crane start -a
+2014/01/16 12:39:19 start.go:89: ▶ N 0x1a  Successfully started container "firstContainer"...
+2014/01/16 12:39:20 start.go:89: ▶ N 0x30  Successfully started container "secondContainer"...
+$sudo docker ps
+CONTAINER ID        IMAGE                              COMMAND                CREATED             STATUS              PORTS                                          NAMES
+540dbe8b1c72        orobix/sshfs_startup_key2:latest   /bin/bash -c /usr/sb   5 seconds ago       Up 5 seconds        0.0.0.0:49154->22/tcp, 0.0.0.0:49654->80/tcp   clever_tesla        
+190b33bd4137        orobix/sshfs_startup_key2:latest   /bin/bash -c /usr/sb   7 seconds ago       Up 6 seconds        0.0.0.0:49153->22/tcp, 0.0.0.0:49653->80/tcp   boring_shockley     
+$crane enter firstContainer
+root@190b33bd4137:~# ls
+ls
+testfile
+root@190b33bd4137:~# touch Newfile
+touch Newfile
+root@190b33bd4137:~# ls
+ls
+Newfile  testfile
+root@190b33bd4137:~# exit
+exit
+exit
+$crane destroy
+2014/01/16 12:40:07 destroy.go:113: ▶ N 0xb  Kill command output:
+190b33bd4137908a5f1bede19c8e45f2a827b826ca101db76a45c4015756869f
+540dbe8b1c72ac41f7b438b68f0fb2bf60bc9a50b359a45b0f5d4ce6ce9ef8f7
+2014/01/16 12:40:08 destroy.go:126: ▶ N 0xd  Remove command output:
+190b33bd4137908a5f1bede19c8e45f2a827b826ca101db76a45c4015756869f
+540dbe8b1c72ac41f7b438b68f0fb2bf60bc9a50b359a45b0f5d4ce6ce9ef8f7
+$sudo docker ps
+CONTAINER ID        IMAGE               COMMAND             CREATED             STATUS              PORTS               NAMES
+```
+
+Running multiple commands across multiple containers:
+
+```
+$crane runall -c="first;second"
+2014/01/16 12:59:29 utils.go:13: ▶ N 0x1a  
+#####COMMAND OUTPUT######
+firstContainerfirstScript
+firstContainerSecondScript
+
+#####END OF COMMAND OUTPUT#####
+
+2014/01/16 12:59:30 utils.go:13: ▶ N 0x35  
+#####COMMAND OUTPUT######
+secondContainerfirstScript
+secondContainerSecondScript
+
+#####END OF COMMAND OUTPUT#####
+
+$crane runall -o="echo works"
+2014/01/16 13:00:07 utils.go:13: ▶ N 0x1a  
+#####COMMAND OUTPUT######
+works
+
+#####END OF COMMAND OUTPUT#####
+
+2014/01/16 13:00:08 utils.go:13: ▶ N 0x35  
+#####COMMAND OUTPUT######
+works
+
+#####END OF COMMAND OUTPUT#####
+
+
+```
+Commiting containers and removing images
+```
+$crane start firstContainer
+2014/01/16 13:04:01 start.go:89: ▶ N 0x1a  Successfully started container "firstContainer"...
+
+$crane enter firstContainer
+root@ef040db83aec:~# touch haha
+touch haha
+root@ef040db83aec:~# ls
+ls
+haha  testfile
+root@ef040db83aec:~# exit
+exit
+exit
+
+$crane freeze firstContainer::updatedDockerImage
+2014/01/16 13:05:54 utils.go:13: ▶ N 0x9  
+#####COMMAND OUTPUT######
+b1de5e229f9d4e69ef93e1c462aed3b2a5667db9a4d7c60d228afc02916a9a47
+
+#####END OF COMMAND OUTPUT#####
+
+$sudo docker images| grep "updatedDockerImage"
+updatedDockerImage                       latest              b1de5e229f9d        25 seconds ago      1.797 GB
+
+$crane rmi updatedDockerImage
+2014/01/16 13:07:10 utils.go:13: ▶ N 0x8  
+#####COMMAND OUTPUT######
+Untagged: b1de5e229f9d4e69ef93e1c462aed3b2a5667db9a4d7c60d228afc02916a9a47
+Deleted: b1de5e229f9d4e69ef93e1c462aed3b2a5667db9a4d7c60d228afc02916a9a47
+
+#####END OF COMMAND OUTPUT#####
+
+$sudo docker images| grep "updatedDockerImage"
+```
+Updating image of container and pulling multiple images at once:
+
+```
+$crane run -u firstContainer:#"echo first; echo second"
+2014/01/16 13:29:13 utils.go:13: ▶ N 0x1c  
+#####COMMAND OUTPUT######
+first
+second
+
+#####END OF COMMAND OUTPUT#####
+
+2014/01/16 13:29:13 freeze.go:86: ▶ N 0x2d  Successfully froze container "firstContainer" into image "alpha" with id "9dec4701263f76206323625ef05e3bf19082ae975981d85ddbc3714301ed6033"
+
+$crane build -a
+2014/01/16 13:30:01 utils.go:13: ▶ N 0xe  
+#####COMMAND OUTPUT######
+Successfully build following images:
+[alpha orobix/sshfs_startup_key2]
+#####END OF COMMAND OUTPUT#####
+```
+
+
 # Configuration
 
 ##Cranefile
@@ -63,7 +239,6 @@ Example Cranefile.toml:
 
     [containers]
     [containers.firstContainer]
-    IP = "172.17.0.7"
     IMAGE = "orobix/sshfs_startup_key2"
     DOCKERFILE = "."
     GRAPHICAL = true
@@ -77,8 +252,6 @@ Example Cranefile.toml:
     COMMANDS = [["first","echo firstContainerfirstScript"],["second","echo firstContainerSecondScript"]]
 
 Flags explained:
-
-IP (string) The ip address of a container. It should NOT be edited by the user.If the container is not running or was destroyed the IP value will be empty string.
 
 IMAGE (string) The name of the docker image. The docker image takes precedence before the Dockerfile. This means that if a provided image already exists in the system it will be used by the crane without building a new image using Dockerfile. If the image does not exist crane will search for it in the docker public repository.If it will not be able to find it there it will build a new image using Dockerfile provided with the image name provided.To sum up the order in which crane decides which image to use is as follows:
 
@@ -317,173 +490,9 @@ Options:
     crane --version
 Shows the current version of Crane.
 
-
-#Example usage
-
-Example Cranefile.toml
-
-```
-[containers]
-[containers.firstContainer]
-IMAGE = "orobix/sshfs_startup_key2"
-DOCKERFILE = "."
-GRAPHICAL = true
-DAEMONIZED = true
-CWD = "/home/foo" #Leave empty if not needed
-DNS = ""#172.25.0.10" #Leave empty if not needed
-PASSWORD = "orobix2013"#Leave empty if not needed
-USERNAME = "root"
-PORTS = [[49153, 22],[49653, 80]]
-
-MOUNTPOINTS = [["/home/piotr/node-simple", "/mnt/node-simple","rw"],["/home/piotr/colors","/mnt/colors","ro"]]
-
-COMMANDS = [["first","echo firstContainerfirstScript"],["second","echo firstContainerSecondScript"]]
-
-[containers.secondContainer]
-IMAGE = "orobix/sshfs_startup_key2"
-DOCKERFILE = "."
-GRAPHICAL = true
-DAEMONIZED = false
-CWD = "" #"/home/foo" #Leave empty if not needed
-DNS = "" #172.25.0.10" #Leave empty if not needed
-PASSWORD = "orobix2013"#Leave empty if not needed
-USERNAME = "root"
-PORTS = [[49154, 22],[49654, 80]]
-
-MOUNTPOINTS = [["/home/piotr/node-simple", "/mnt/node-simple","rw"],["/home/piotr/colors","/mnt/colors","ro"]]
-COMMANDS = [["first","echo secondContainerfirstScript"],["second","echo secondContainerSecondScript"]]
-
-
-
-```
-Example dialog involving daemonized containers:
-
-```
-$sudo docker ps
-CONTAINER ID        IMAGE               COMMAND             CREATED             STATUS              PORTS               NAMES
-$crane version
-Crane v0.0.1.dev
-$crane start -a
-2014/01/16 12:39:19 start.go:89: ▶ N 0x1a  Successfully started container "firstContainer"...
-2014/01/16 12:39:20 start.go:89: ▶ N 0x30  Successfully started container "secondContainer"...
-$sudo docker ps
-CONTAINER ID        IMAGE                              COMMAND                CREATED             STATUS              PORTS                                          NAMES
-540dbe8b1c72        orobix/sshfs_startup_key2:latest   /bin/bash -c /usr/sb   5 seconds ago       Up 5 seconds        0.0.0.0:49154->22/tcp, 0.0.0.0:49654->80/tcp   clever_tesla        
-190b33bd4137        orobix/sshfs_startup_key2:latest   /bin/bash -c /usr/sb   7 seconds ago       Up 6 seconds        0.0.0.0:49153->22/tcp, 0.0.0.0:49653->80/tcp   boring_shockley     
-$crane enter firstContainer
-root@190b33bd4137:~# ls
-ls
-testfile
-root@190b33bd4137:~# touch Newfile
-touch Newfile
-root@190b33bd4137:~# ls
-ls
-Newfile  testfile
-root@190b33bd4137:~# exit
-exit
-exit
-$crane destroy
-2014/01/16 12:40:07 destroy.go:113: ▶ N 0xb  Kill command output:
-190b33bd4137908a5f1bede19c8e45f2a827b826ca101db76a45c4015756869f
-540dbe8b1c72ac41f7b438b68f0fb2bf60bc9a50b359a45b0f5d4ce6ce9ef8f7
-2014/01/16 12:40:08 destroy.go:126: ▶ N 0xd  Remove command output:
-190b33bd4137908a5f1bede19c8e45f2a827b826ca101db76a45c4015756869f
-540dbe8b1c72ac41f7b438b68f0fb2bf60bc9a50b359a45b0f5d4ce6ce9ef8f7
-$sudo docker ps
-CONTAINER ID        IMAGE               COMMAND             CREATED             STATUS              PORTS               NAMES
-```
-
-Running multiple commands across multiple containers:
-
-```
-$crane runall -c="first;second"
-2014/01/16 12:59:29 utils.go:13: ▶ N 0x1a  
-#####COMMAND OUTPUT######
-firstContainerfirstScript
-firstContainerSecondScript
-
-#####END OF COMMAND OUTPUT#####
-
-2014/01/16 12:59:30 utils.go:13: ▶ N 0x35  
-#####COMMAND OUTPUT######
-secondContainerfirstScript
-secondContainerSecondScript
-
-#####END OF COMMAND OUTPUT#####
-
-$crane runall -o="echo works"
-2014/01/16 13:00:07 utils.go:13: ▶ N 0x1a  
-#####COMMAND OUTPUT######
-works
-
-#####END OF COMMAND OUTPUT#####
-
-2014/01/16 13:00:08 utils.go:13: ▶ N 0x35  
-#####COMMAND OUTPUT######
-works
-
-#####END OF COMMAND OUTPUT#####
-
-
-```
-Commiting containers and removing images
-```
-$crane start firstContainer
-2014/01/16 13:04:01 start.go:89: ▶ N 0x1a  Successfully started container "firstContainer"...
-
-$crane enter firstContainer
-root@ef040db83aec:~# touch haha
-touch haha
-root@ef040db83aec:~# ls
-ls
-haha  testfile
-root@ef040db83aec:~# exit
-exit
-exit
-
-$crane freeze firstContainer::updatedDockerImage
-2014/01/16 13:05:54 utils.go:13: ▶ N 0x9  
-#####COMMAND OUTPUT######
-b1de5e229f9d4e69ef93e1c462aed3b2a5667db9a4d7c60d228afc02916a9a47
-
-#####END OF COMMAND OUTPUT#####
-
-$sudo docker images| grep "updatedDockerImage"
-updatedDockerImage                       latest              b1de5e229f9d        25 seconds ago      1.797 GB
-
-$crane rmi updatedDockerImage
-2014/01/16 13:07:10 utils.go:13: ▶ N 0x8  
-#####COMMAND OUTPUT######
-Untagged: b1de5e229f9d4e69ef93e1c462aed3b2a5667db9a4d7c60d228afc02916a9a47
-Deleted: b1de5e229f9d4e69ef93e1c462aed3b2a5667db9a4d7c60d228afc02916a9a47
-
-#####END OF COMMAND OUTPUT#####
-
-$sudo docker images| grep "updatedDockerImage"
-```
-Updating image of container and pulling multiple images at once:
-
-```
-$crane run -u firstContainer:#"echo first; echo second"
-2014/01/16 13:29:13 utils.go:13: ▶ N 0x1c  
-#####COMMAND OUTPUT######
-first
-second
-
-#####END OF COMMAND OUTPUT#####
-
-2014/01/16 13:29:13 freeze.go:86: ▶ N 0x2d  Successfully froze container "firstContainer" into image "alpha" with id "9dec4701263f76206323625ef05e3bf19082ae975981d85ddbc3714301ed6033"
-
-$crane build -a
-2014/01/16 13:30:01 utils.go:13: ▶ N 0xe  
-#####COMMAND OUTPUT######
-Successfully build following images:
-[alpha orobix/sshfs_startup_key2]
-#####END OF COMMAND OUTPUT#####
-```
 #Status 
 </br>
-Early development. It can be useful for testing and development but definitely not for production!
+Early development, use at your own risk!
 
 #Licence
 </br>
