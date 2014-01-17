@@ -1,0 +1,29 @@
+[containers]
+[containers.firstContainer]
+IMAGE = "orobix/sshfs_startup_key"
+DOCKERFILE = "."
+GRAPHICAL = true
+DAEMONIZED = true
+CWD = "/home/foo" #Leave empty if not needed
+DNS = ""#172.25.0.10" #Leave empty if not needed
+PASSWORD = "orobix2013"#Leave empty if not needed
+USERNAME = "root"
+PORTS = [[49153, 22],[49653, 80]]
+
+MOUNTPOINTS = [["/home/piotr/node-simple", "/mnt/node-simple","rw"],["/home/piotr/colors","/mnt/colors","ro"]]
+
+COMMANDS = [["first","echo firstContainerfirstScript"],["second","echo firstContainerSecondScript"]]
+
+[containers.secondContainer]
+IMAGE = "orobix/sshfs_startup_key"
+DOCKERFILE = "."
+GRAPHICAL = true
+DAEMONIZED = false
+CWD = "" #"/home/foo" #Leave empty if not needed
+DNS = "" #172.25.0.10" #Leave empty if not needed
+PASSWORD = "orobix2013"#Leave empty if not needed
+USERNAME = "root"
+PORTS = [[49154, 22],[49654, 80]]
+
+MOUNTPOINTS = [["/home/piotr/node-simple", "/mnt/node-simple","rw"],["/home/piotr/colors","/mnt/colors","ro"]]
+COMMANDS = [["first","echo secondContainerfirstScript"],["second","echo secondContainerSecondScript"]]
