@@ -27,7 +27,16 @@ If you answered "yes" to at least one of above questions then Crane is something
 - Easily launch multiple instances of the same container.
 - Share data between the host machine and containers running in the environment
 - Create daemonized containers that can be easily accessed and modified afterwards.
+- Ability to freeze containers into immutable images and saving your container's changes step by step (similar to Dockerfile commits after each command).
+- SSH to daemonized containers.
 - Many more...
+
+
+#Example Usage
+
+Crane was created to improve collaboration between developers. With a single configuration file (let's face it: it does not get simpler than TOML format) and a single executable you can export and recreate your environment on another machines with a single command!
+
+You can define a cluster of containers and run multiple commands inside of them (possibly different per each container) using (again) a single command!
 
 
 # Requirements
